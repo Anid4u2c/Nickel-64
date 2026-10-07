@@ -19,3 +19,5 @@
 .song-note-print{display:none!important}@media print{.song-note-print{display:block!important;white-space:pre-wrap}.actions .song-note-button{display:none}}
 
 .song-heading>span:first-child{min-width:0;overflow-wrap:anywhere}.selected-song .setlist-song-title{padding:0;border:0;width:auto;text-align:left;font:inherit;color:inherit;line-height:inherit;background:none}.selected-song .setlist-song-title:hover{text-decoration:underline;color:var(--lime)}.note-shortcuts{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}.note-shortcuts[hidden]{display:none}.note-shortcuts button{padding:6px 10px;font-size:13px}.song{scroll-margin-top:16px}.song-highlight{background:#d9ff6010;box-shadow:inset 3px 0 var(--lime)}@media print{.selected-song .setlist-song-title{display:block;color:#111}}
+
+#emailSignInDetails summary{cursor:pointer;color:var(--muted);padding:12px 0;font-size:14px}#emailSignInDetails summary:hover{color:var(--lime)}#emailSignInDetails summary:focus-visible{outline:2px solid var(--lime);outline-offset:3px}#authDialog{max-height:90vh;overflow:auto}
