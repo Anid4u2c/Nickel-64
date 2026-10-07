@@ -69,7 +69,7 @@ service cloud.firestore {
         && (d.id is int || d.id is string)
         && d.title is string && d.title.size() > 0 && d.title.size() <= 160
         && d.artist is string && d.artist.size() > 0 && d.artist.size() <= 160
-        && optionalNumber(d.bpm,1,400) && optionalNumber(d.year,-2000,2100) && optionalNumber(d.seconds,1,7200)
+        && optionalNumber(d.bpm,1,400) && optionalNumber(d.year,1,2100) && optionalNumber(d.seconds,1,7200)
         && d.status in ['pending','approved','denied']
         && d.requestedBy is string && d.requestedBy.size() > 0 && d.requestedBy.size() <= 128
         && d.likes is int && d.likes >= 0

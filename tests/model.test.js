@@ -38,4 +38,4 @@ test('live song syncing keeps unfinished details and detects competing detail ed
  assert.equal(sameIds([0,1],[1,0]),false);assert.equal(sameIds([],[]),true);
 });
 
-test('composition years include older classical and ancient works',()=>{for(const year of [1680,-1950,-2000])assert.equal(songDetails({year}).year,year);assert.throws(()=>songDetails({year:-2001}));});
+test('composition years include older classical works without BCE input',()=>{for(const year of [1,1680])assert.equal(songDetails({year}).year,year);assert.throws(()=>songDetails({year:-1}));assert.throws(()=>songDetails({year:0}));});
