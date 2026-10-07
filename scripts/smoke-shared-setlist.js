@@ -33,6 +33,8 @@ try {
   await runTransaction(db,async transaction=>{await transaction.get(song);transaction.set(song,{id:songId,title:'Deployment song request (temporary)',artist:'Verification',bpm:null,year:null,seconds:null,status:'pending',requestedBy:uid,likes:0,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});});
   await runTransaction(db,async transaction=>{const current=await transaction.get(song);await transaction.get(vote);transaction.set(vote,{uid,createdAt:serverTimestamp()});transaction.update(song,{likes:current.data().likes+1});});
   if((await getDocFromServer(song)).data().likes!==1)throw new Error('Song heart count mismatch');
+  await runTransaction(db,async transaction=>{const current=await transaction.get(song);await transaction.get(vote);transaction.delete(vote);transaction.update(song,{likes:current.data().likes-1});});
+  if((await getDocFromServer(song)).data().likes!==0)throw new Error('Heart withdrawal mismatch');
   await runTransaction(db,async transaction=>{await transaction.get(ref);transaction.update(ref,{songIds:[0,songId],updatedAt:serverTimestamp()});});
   if(!(await getDocFromServer(ref)).data().songIds.includes(songId))throw new Error('Requested song missing from setlist');
   await runTransaction(db,async transaction=>{await transaction.get(ref);transaction.update(ref,{songIds:[],updatedAt:serverTimestamp()});});

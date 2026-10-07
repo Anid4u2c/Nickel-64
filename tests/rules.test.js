@@ -95,3 +95,12 @@ test('editors can sync only songs, including removal of the last song, without c
  await assertFails(updateDoc(ref(ctx('viewer','viewer@example.com')),{songIds:[1],updatedAt:serverTimestamp()}));
  await assertFails(setDoc(ref(alice,'empty-new'),record({songIds:[]})));
 });
+
+test('moderators may add approved songs; regular users may not; hearts can be atomically withdrawn',async()=>{
+ const rob=ctx('rob','thenickel64@gmail.com');await assertSucceeds(setDoc(songRef(rob),{...songRecord(),requestedBy:'rob',status:'approved'}));
+ const alice=ctx('alice');await assertSucceeds(castHeart(alice,'alice'));
+ await assertFails(updateDoc(songRef(alice),{likes:0}));
+ await assertSucceeds(runTransaction(alice,async t=>{await t.get(songRef(alice));const vote=doc(alice,'songCatalog',songId,'likes','alice');await t.get(vote);t.delete(vote);t.update(songRef(alice),{likes:0});}));
+ await assertFails(updateDoc(songRef(alice),{likes:-1}));
+ await assertSucceeds(castHeart(alice,'alice'));
+});

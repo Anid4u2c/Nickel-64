@@ -81,7 +81,7 @@ service cloud.firestore {
       allow create: if authenticated() && validSong(request.resource.data)
         && songId.matches('song_[a-f0-9]{64}') && request.resource.data.id == songId
         && request.resource.data.requestedBy == request.auth.uid
-        && request.resource.data.status == 'pending' && request.resource.data.likes == 0
+        && (request.resource.data.status == 'pending' || (bandViewer() && request.resource.data.status == 'approved')) && request.resource.data.likes == 0
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
       allow update: if authenticated() && validSong(request.resource.data) && (
         (bandViewer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bpm','year','seconds','status','updatedAt'])
@@ -89,7 +89,11 @@ service cloud.firestore {
         || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
           && request.resource.data.likes == resource.data.likes + 1
           && !exists(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid))
-          && getAfter(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid)).data.uid == request.auth.uid));
+          && getAfter(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid)).data.uid == request.auth.uid)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+          && request.resource.data.likes == resource.data.likes - 1
+          && exists(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid))
+          && !existsAfter(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid))));
       allow delete: if false;
       match /likes/{uid} {
         allow get: if authenticated() && request.auth.uid == uid;
@@ -98,7 +102,9 @@ service cloud.firestore {
           && request.resource.data.keys().hasAll(['uid','createdAt']) && request.resource.data.keys().hasOnly(['uid','createdAt'])
           && request.resource.data.uid == uid && request.resource.data.createdAt == request.time
           && getAfter(/databases/$(database)/documents/songCatalog/$(songId)).data.likes == get(/databases/$(database)/documents/songCatalog/$(songId)).data.likes + 1;
-        allow update,delete: if false;
+        allow delete: if authenticated() && request.auth.uid == uid
+          && getAfter(/databases/$(database)/documents/songCatalog/$(songId)).data.likes == get(/databases/$(database)/documents/songCatalog/$(songId)).data.likes - 1;
+        allow update: if false;
       }
     }
     match /{document=**} { allow read, write: if false; }

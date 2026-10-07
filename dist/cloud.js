@@ -67,14 +67,17 @@ export async function requestSong(input){
  if(!title||!artist||title.length>160||artist.length>160)throw new Error('Enter a title and artist, each up to 160 characters.');
  const key=await songKey(title,artist),ref=doc(db,'songCatalog',key);let result;
  await runTransaction(db,async t=>{const current=await t.get(ref);if(current.exists()){result={...current.data(),key};return;}
- result={id:key,title,artist,...songDetails(input),status:'pending',requestedBy:user.uid,likes:0,createdAt:serverTimestamp(),updatedAt:serverTimestamp()};t.set(ref,result);result={...result,key};});
- await likeSong(key);return result;
+ result={id:key,title,artist,...songDetails(input),status:isBand(user)?'approved':'pending',requestedBy:user.uid,likes:0,createdAt:serverTimestamp(),updatedAt:serverTimestamp()};t.set(ref,result);result={...result,key};});
+ return result;
 }
-export async function likeSong(key){
- const user=auth.currentUser;if(!user?.emailVerified)throw new Error('Sign in with a verified email to add a heart.');
+export const likeSong=key=>setSongLike(key,true);
+export async function setSongLike(key,desired){
+ const user=auth.currentUser;if(!user?.emailVerified)throw new Error('Sign in with a verified email to update your heart.');
  const ref=doc(db,'songCatalog',key),vote=doc(db,'songCatalog',key,'likes',user.uid);
- return runTransaction(db,async t=>{const [song,liked]=await Promise.all([t.get(ref),t.get(vote)]);if(!song.exists())throw new Error('This song is not available yet.');if(liked.exists())return false;t.set(vote,{uid:user.uid,createdAt:serverTimestamp()});t.update(ref,{likes:song.data().likes+1});return true;});
+ await runTransaction(db,async t=>{const [song,liked]=await Promise.all([t.get(ref),t.get(vote)]);if(!song.exists())throw new Error('This song is not available yet.');if(liked.exists()===desired)return;if(desired)t.set(vote,{uid:user.uid,createdAt:serverTimestamp()});else t.delete(vote);t.update(ref,{likes:song.data().likes+(desired?1:-1)});});
+ const song=await getDocFromServer(ref);return {likes:song.data().likes,liked:desired};
 }
+
 export async function updateSong(key,details,status){
  if(!isBand(auth.currentUser))throw new Error('Only moderators can update songs.');
  const {songDetails}=await import('./song-model.js'),ref=doc(db,'songCatalog',key);
