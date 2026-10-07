@@ -11,3 +11,4 @@
 @media(max-width:1099px){.table-head{padding-right:0}}
 @media(max-width:900px){.table-head,.song{grid-template-columns:minmax(0,1fr) 32px 40px 40px 32px;gap:8px}.song button{width:32px;height:32px}.song button.heart{width:40px}.song .song-edit{width:auto;height:auto}.table-head .year{display:none}}
 @media print{.requests-panel,#requestSongButton,.request-badge{display:none!important}}
+.song button[data-add]{width:32px;height:32px;font-size:20px;justify-self:center}.song .title .request-badge{margin:0 0 0 6px;font-weight:400;vertical-align:middle}.saved-card[aria-current="true"]{border-color:var(--lime)}#newPlan>span{font-size:20px;line-height:1}#syncActions{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}#syncActions button{font-size:13px;padding:8px}#cloudSave:disabled{cursor:help}@media(max-width:900px){.song button[data-add]{width:28px;height:28px;font-size:18px}}@media print{#syncActions{display:none!important}}

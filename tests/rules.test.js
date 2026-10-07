@@ -25,7 +25,7 @@ test('ownership, timestamps, schema, required fields and roles cannot be forged'
  await assertFails(deleteDoc(ref(db)));await assertFails(setDoc(doc(db,'users','alice'),{isAdmin:true}));await assertFails(setDoc(doc(db,'setlists','one','private','notes'),{text:'bad'}));
 });
 test('validation rejects bad schedules, duration tampering, song pollution and large fields on create and update',async()=>{
- const db=ctx('alice');await seed();const attacks=[{event:''},{event:'x'.repeat(121)},{notes:'x'.repeat(4001)},{eventDate:'2027-06-12'},{startMinutes:-1},{endMinutes:1440},{startMinutes:60,endMinutes:60,durationMinutes:0},{durationMinutes:999999},{songIds:['0']},{songIds:[0,0]},{songIds:[103]},{songIds:[{}]},{songIds:[]},{songIds:Array(104).fill(0)}];
+ const db=ctx('alice');await seed();const attacks=[{event:''},{event:'x'.repeat(121)},{notes:'x'.repeat(4001)},{eventDate:'2027-06-12'},{startMinutes:-1},{endMinutes:1440},{startMinutes:60,endMinutes:60,durationMinutes:0},{durationMinutes:999999},{songIds:['0']},{songIds:[0,0]},{songIds:[103]},{songIds:[{}]},{songIds:Array(104).fill(0)}];
  for(let i=0;i<attacks.length;i++){await assertFails(setDoc(ref(db,'attack'+i),record(attacks[i])));await assertFails(updateDoc(ref(db),{...attacks[i],updatedAt:serverTimestamp()}));}
  await assertSucceeds(updateDoc(ref(db),{notes:'Updated',updatedAt:serverTimestamp()}));
  await assertFails(setDoc(ref(ctx('alice','client@example.com',false),'unverified'),record()));
@@ -84,4 +84,14 @@ test('hearts require an atomic per-user vote and cannot be inflated or forged',a
  const count=(await getDoc(songRef(alice))).data().likes;if(count!==2)throw new Error('Heart count must be two distinct users');
  await assertFails(updateDoc(songRef(ctx('rob','thenickel64@gmail.com')),{likes:100,updatedAt:serverTimestamp()}));
  await assertFails(deleteDoc(doc(alice,'songCatalog',songId,'likes','alice')));
+});
+
+
+test('editors can sync only songs, including removal of the last song, without changing event details',async()=>{
+ const alice=ctx('alice');await seed();await updateDoc(ref(alice),{ownerEmail:'client@example.com',access:{'editor@example.com':'editor','viewer@example.com':'viewer'},sharedWith:['editor@example.com','viewer@example.com'],updatedAt:serverTimestamp()});
+ const editor=ctx('editor','editor@example.com');await assertSucceeds(updateDoc(ref(editor),{songIds:[0,2],updatedAt:serverTimestamp()}));
+ const saved=(await getDoc(ref(alice))).data();if(saved.notes!=='First dance'||saved.event!=='Wedding'||saved.durationMinutes!==150)throw new Error('Song-only update changed event details');
+ await assertSucceeds(updateDoc(ref(editor),{songIds:[],updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(ctx('viewer','viewer@example.com')),{songIds:[1],updatedAt:serverTimestamp()}));
+ await assertFails(setDoc(ref(alice,'empty-new'),record({songIds:[]})));
 });

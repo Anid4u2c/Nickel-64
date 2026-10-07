@@ -11,7 +11,9 @@ Browse 103 songs, search/filter the library, order a setlist, record an event da
 
 ## Shared setlists
 
-Sign in with Google or email/password. Email/password users must verify their email before saving. Click **Save for Nickel 64** to share the current draft; local drafts remain on the current device until saved.
+Sign in with Google or email/password. Email/password users must verify their email before saving. Click **Save for Nickel 64** to create a shared setlist. Thereafter additions, removals and order changes sync automatically, including removal of the final song. **Save event details** is enabled only for unsaved event name, date, time or notes; it has a tooltip explaining this distinction. Song-only transactions preserve stored event details and reject competing song edits. Failed syncs keep the local draft and offer retry or reload. Detail updates from others are merged into untouched fields; competing edits require resolution.
+
+Regular users automatically open their single owned/shared setlist when there is no separate unfinished draft. Clicking the currently open card preserves local edits without a warning. An intentionally new draft stays open. Verified users see requested songs in the main library, with awaiting-review or denied labels, as well as in the request section.
 
 - Clients read their owned setlists and those explicitly shared with their verified email.
 - Verified `davecarlsonguitar@gmail.com` and `thenickel64@gmail.com` accounts can view all saved setlists.

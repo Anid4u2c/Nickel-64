@@ -1,6 +1,6 @@
 // Shared setlists: ownerUid (immutable, 1–128 chars), event (1–120 chars),
 // notes (0–4000 chars), eventDate (UTC calendar date timestamp), startMinutes /
-// endMinutes (0–1439), durationMinutes (derived 1–1439), songIds (1–103 unique
+// endMinutes (0–1439), durationMinutes (derived 1–1439), songIds (0–200 unique
 // library IDs), createdAt (immutable server timestamp), updatedAt (server timestamp).
 // Clients read/write their own; verified duo accounts and Nick read all.
 rules_version = '2';
@@ -39,7 +39,7 @@ service cloud.firestore {
         && d.endMinutes is int && d.endMinutes >= 0 && d.endMinutes < 1440
         && d.startMinutes != d.endMinutes
         && d.durationMinutes is int && d.durationMinutes == (d.endMinutes - d.startMinutes + 1440) % 1440
-        && d.songIds is list && d.songIds.size() > 0 && d.songIds.size() <= 200
+        && d.songIds is list && d.songIds.size() >= 0 && d.songIds.size() <= 200
         && d.songIds.toSet().size() == d.songIds.size()
         && d.songIds.removeAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102]).join(',').matches('(song_[a-f0-9]{64})(,song_[a-f0-9]{64})*|')
         && d.createdAt is timestamp && d.updatedAt is timestamp;
@@ -50,6 +50,7 @@ service cloud.firestore {
       allow get: if authenticated() && (!exists(/databases/$(database)/documents/setlists/$(setlistId)) || bandViewer() || owner(resource.data) || shared(resource.data));
       allow list: if bandViewer() || owner(resource.data) || shared(resource.data);
       allow create: if owner(request.resource.data) && validSetlist(request.resource.data)
+        && request.resource.data.songIds.size() > 0
         && request.resource.data.get('ownerEmail', email()) == email()
         && request.resource.data.get('sharedWith', []).size() == 0
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;

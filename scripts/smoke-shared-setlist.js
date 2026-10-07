@@ -35,11 +35,13 @@ try {
   if((await getDocFromServer(song)).data().likes!==1)throw new Error('Song heart count mismatch');
   await runTransaction(db,async transaction=>{await transaction.get(ref);transaction.update(ref,{songIds:[0,songId],updatedAt:serverTimestamp()});});
   if(!(await getDocFromServer(ref)).data().songIds.includes(songId))throw new Error('Requested song missing from setlist');
+  await runTransaction(db,async transaction=>{await transaction.get(ref);transaction.update(ref,{songIds:[],updatedAt:serverTimestamp()});});
+  const empty=(await getDocFromServer(ref)).data();if(empty.songIds.length!==0||empty.notes!=='Updated verification'||empty.durationMinutes!==150)throw new Error('Song removal changed event details');
   await signOut(auth);
   let denied=false;try{await getDocFromServer(ref);}catch(error){if(error.code==='permission-denied')denied=true;else throw error;}
   if(!denied)throw new Error('Unauthenticated data was readable');
   let requestDenied=false;try{await getDocFromServer(song);}catch(error){if(error.code==='permission-denied')requestDenied=true;else throw error;}if(!requestDenied)throw new Error('Pending request was publicly readable');
-  console.log('PASS: song request, heart and requested-song save; live Firebase sign-in, transactional save/update, inbox query, duration readback, and signed-out access denial.');
+  console.log('PASS: song request, heart, requested-song save and final-song removal; live Firebase sign-in, transactional save/update, inbox query, duration readback, and signed-out access denial.');
 } catch(error) { console.error('Live verification failed:',error.code||'unknown',error.message);process.exitCode=1; }
 finally {
   await adminFirestore(admin,databaseId).doc('songCatalog/'+songId+'/likes/'+uid).delete();

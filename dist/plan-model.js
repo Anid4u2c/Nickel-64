@@ -25,3 +25,14 @@ export function setlistRole(record,user) {
 export function canEditSetlist(record,user){return ['owner','editor'].includes(setlistRole(record,user));}
 export function canManageSetlist(record,user){return setlistRole(record,user)==='owner';}
 export function regularVisible(record,user){return record.ownerUid===user?.uid||(record.sharedWith||[]).includes(user?.email?.toLowerCase());}
+
+export const DETAIL_FIELDS=['event','notes','date','startTime','endTime'];
+export const sameIds=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
+export const sameDetails=(a,b)=>!!a&&!!b&&DETAIL_FIELDS.every(key=>a[key]===b[key]);
+// Keep local detail edits, adopt untouched remote fields, and flag competing edits.
+export function mergeDetails(local,baseline,remote){
+ const values={},conflicts=[];
+ for(const key of DETAIL_FIELDS){const edited=local[key]!==baseline[key];values[key]=edited?local[key]:remote[key];if(edited&&remote[key]!==baseline[key]&&local[key]!==remote[key])conflicts.push(key);}
+ return {values,conflicts};
+}
+export const sameTimestamp=(a,b)=>!!a&&!!b&&a.seconds===b.seconds&&a.nanoseconds===b.nanoseconds;

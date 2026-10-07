@@ -2,7 +2,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.4.0/firebas
 import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, sendPasswordResetEmail, signOut } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-auth.js';
 import { getFirestore, collection, query, where, onSnapshot, doc, runTransaction, serverTimestamp, Timestamp, getDocFromServer } from 'https://www.gstatic.com/firebasejs/12.4.0/firebase-firestore.js';
 import { firebaseConfig, databaseId } from './firebase-config.js';
-import { isBand, clockMinutes, durationMinutes, validDate, canEditSetlist, canManageSetlist } from './plan-model.js';
+import { isBand, clockMinutes, durationMinutes, validDate, canEditSetlist, canManageSetlist, sameIds, sameTimestamp } from './plan-model.js';
 const app = initializeApp(firebaseConfig), auth = getAuth(app), db = getFirestore(app, databaseId);
 export const watchUser = callback => onAuthStateChanged(auth, callback);
 export const googleSignIn = () => signInWithPopup(auth, new GoogleAuthProvider());
@@ -25,7 +25,7 @@ export async function savePlan(plan,expectedUpdatedAt) {
   if(!user?.emailVerified) throw new Error('Verify your email before saving a shared setlist.');
   const startMinutes=clockMinutes(plan.startTime),endMinutes=clockMinutes(plan.endTime);
   const duration=durationMinutes(startMinutes,endMinutes);
-  if(!plan.event.trim()||!validDate(plan.date)||duration==null||!plan.ids.length)throw new Error('Add an event name, date, distinct start and end times, and at least one song.');
+  if(!plan.event.trim()||!validDate(plan.date)||duration==null||(!plan.cloudId&&!plan.ids.length))throw new Error('Add an event name, date, distinct start and end times, and at least one song.');
 
   const ref=plan.cloudId?doc(db,'setlists',plan.cloudId):doc(collection(db,'setlists'));
   await runTransaction(db,async transaction=>{
@@ -33,7 +33,7 @@ export async function savePlan(plan,expectedUpdatedAt) {
     if(existing.exists()){
       const data=existing.data();
       if(!canEditSetlist(data,user))throw new Error('You do not have edit access to this setlist.');
-      if(!expectedUpdatedAt||!data.updatedAt?.isEqual(expectedUpdatedAt))throw new Error('This setlist changed on another device. Open the latest saved version before saving.');
+      if(!expectedUpdatedAt||!sameTimestamp(data.updatedAt,expectedUpdatedAt))throw new Error('This setlist changed on another device. Open the latest saved version before saving.');
     }else if(plan.cloudId)throw new Error('This saved setlist is no longer available.');
     const previous=existing.exists()?existing.data():null;
     const record={ownerUid:previous?.ownerUid||user.uid,ownerEmail:previous?.ownerEmail||user.email.toLowerCase(),access:previous?.access||{},sharedWith:previous?.sharedWith||[],event:plan.event.trim(),notes:plan.notes,eventDate:Timestamp.fromDate(new Date(plan.date+'T00:00:00Z')),startMinutes,endMinutes,durationMinutes:duration,songIds:plan.ids,createdAt:existing.exists()?existing.data().createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
@@ -50,7 +50,7 @@ export async function changeSharing(id,email,role,expectedUpdatedAt) {
   await runTransaction(db,async t=>{
     const snapshot=await t.get(ref);if(!snapshot.exists())throw new Error('This setlist no longer exists.');
     const record=snapshot.data();if(!canManageSetlist(record,user))throw new Error('Only owners can manage sharing.');
-    if(!expectedUpdatedAt||!record.updatedAt.isEqual(expectedUpdatedAt))throw new Error('Sharing changed on another device. Reopen the latest saved setlist.');
+    if(!expectedUpdatedAt||!sameTimestamp(record.updatedAt,expectedUpdatedAt))throw new Error('Sharing changed on another device. Reopen the latest saved setlist.');
     const ownerEmail=record.ownerEmail||user.email.toLowerCase();if(email===ownerEmail)throw new Error('The original creator retains ownership.');
     const access={...(record.access||{})};if(role===null)delete access[email];else access[email]=role;
     if(Object.keys(access).length>25)throw new Error('A setlist can be shared with up to 25 users.');
@@ -79,4 +79,12 @@ export async function updateSong(key,details,status){
  if(!isBand(auth.currentUser))throw new Error('Only moderators can update songs.');
  const {songDetails}=await import('./song-model.js'),ref=doc(db,'songCatalog',key);
  await runTransaction(db,async t=>{const s=await t.get(ref);if(!s.exists())throw new Error('Song no longer exists.');t.update(ref,{...(details?songDetails(details):{}),status:status||s.data().status,updatedAt:serverTimestamp()});});
+}
+
+// Only update songs: event details and sharing remain exactly as stored.
+export async function saveSongs(id,ids,expectedIds){
+ const user=auth.currentUser;if(!user?.emailVerified)throw new Error('Verify your email to sync songs.');
+ const ref=doc(db,'setlists',id);
+ await runTransaction(db,async t=>{const current=await t.get(ref);if(!current.exists())throw new Error('This setlist is no longer available.');const record=current.data();if(!canEditSetlist(record,user))throw new Error('You no longer have edit access to this setlist.');if(!sameIds(record.songIds,expectedIds))throw new Error('Songs changed on another device. Reload the saved version before changing them.');t.update(ref,{songIds:ids,updatedAt:serverTimestamp()});});
+ const saved=await getDocFromServer(ref);if(!sameIds(saved.data().songIds,ids))throw new Error('Songs changed on another device. Reload the saved version.');return {id:saved.id,...saved.data()};
 }

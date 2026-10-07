@@ -26,3 +26,14 @@ test('song identity ignores case and spaces while allowing another artist',async
  assert.equal(matchingSongs(songs,'OF M').length,2);assert.equal(exactSong(songs,'all of me','JOHN LEGEND'),songs[0]);
  assert.deepEqual(songDetails({}),{bpm:null,year:null,seconds:null});assert.throws(()=>songDetails({seconds:-1}));
 });
+
+
+import {sameIds,mergeDetails} from '../dist/plan-model.js';
+test('live song syncing keeps unfinished details and detects competing detail edits',()=>{
+ const baseline={event:'Wedding',notes:'',date:'2027-06-12',startTime:'18:00',endTime:'22:00'};
+ const local={...baseline,notes:'Unfinished notes'};
+ const remote={...baseline,startTime:'19:00'};
+ const result=mergeDetails(local,baseline,remote);assert.equal(result.values.notes,'Unfinished notes');assert.equal(result.values.startTime,'19:00');assert.deepEqual(result.conflicts,[]);
+ assert.deepEqual(mergeDetails(local,baseline,{...remote,notes:'Someone else edited'}).conflicts,['notes']);
+ assert.equal(sameIds([0,1],[1,0]),false);assert.equal(sameIds([],[]),true);
+});
