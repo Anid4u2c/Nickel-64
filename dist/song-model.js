@@ -1,0 +1,5 @@
+export const normalizeSongText=value=>value.normalize('NFKC').trim().replace(/\s+/g,' ').toLowerCase();
+export async function songKey(title,artist){const bytes=new TextEncoder().encode(normalizeSongText(title)+'\n'+normalizeSongText(artist));return 'song_'+Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes)),b=>b.toString(16).padStart(2,'0')).join('');}
+export function matchingSongs(songs,title){const q=normalizeSongText(title);return q?songs.filter(s=>normalizeSongText(s.title).includes(q)):[];}
+export function exactSong(songs,title,artist){return songs.find(s=>normalizeSongText(s.title)===normalizeSongText(title)&&normalizeSongText(s.artist)===normalizeSongText(artist));}
+export function songDetails(values){const optional=(v,min,max,label)=>{if(v===''||v==null)return null;const n=Number(v);if(!Number.isInteger(n)||n<min||n>max)throw new Error(`${label} must be a whole number from ${min} to ${max}.`);return n;};return {bpm:optional(values.bpm,1,400,'BPM'),year:optional(values.year,1900,2100,'Year'),seconds:optional(values.seconds,1,7200,'Duration in seconds')};}

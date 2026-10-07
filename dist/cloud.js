@@ -58,3 +58,25 @@ export async function changeSharing(id,email,role,expectedUpdatedAt) {
   });
   try{const saved=await getDocFromServer(ref);return {id:saved.id,...saved.data()};}catch(e){if(e.code==='permission-denied'&&email===user.email.toLowerCase()&&role===null)return {id,accessLost:true};throw e;}
 }
+
+// Realtime catalog updates keep decisions, details and heart counts in sync for everyone.
+export function watchSongs(user,onData,onError){const ref=collection(db,'songCatalog');return onSnapshot(user?.emailVerified?ref:query(ref,where('status','==','approved')),s=>onData(s.docs.map(d=>({...d.data(),key:d.id}))),onError);}
+export async function requestSong(input){
+ const user=auth.currentUser;if(!user?.emailVerified)throw new Error('Sign in with a verified email to request a song.');
+ const {songKey,songDetails}=await import('./song-model.js');const title=input.title.trim().replace(/\s+/g,' '),artist=input.artist.trim().replace(/\s+/g,' ');
+ if(!title||!artist||title.length>160||artist.length>160)throw new Error('Enter a title and artist, each up to 160 characters.');
+ const key=await songKey(title,artist),ref=doc(db,'songCatalog',key);let result;
+ await runTransaction(db,async t=>{const current=await t.get(ref);if(current.exists()){result={...current.data(),key};return;}
+ result={id:key,title,artist,...songDetails(input),status:'pending',requestedBy:user.uid,likes:0,createdAt:serverTimestamp(),updatedAt:serverTimestamp()};t.set(ref,result);result={...result,key};});
+ await likeSong(key);return result;
+}
+export async function likeSong(key){
+ const user=auth.currentUser;if(!user?.emailVerified)throw new Error('Sign in with a verified email to add a heart.');
+ const ref=doc(db,'songCatalog',key),vote=doc(db,'songCatalog',key,'likes',user.uid);
+ return runTransaction(db,async t=>{const [song,liked]=await Promise.all([t.get(ref),t.get(vote)]);if(!song.exists())throw new Error('This song is not available yet.');if(liked.exists())return false;t.set(vote,{uid:user.uid,createdAt:serverTimestamp()});t.update(ref,{likes:song.data().likes+1});return true;});
+}
+export async function updateSong(key,details,status){
+ if(!isBand(auth.currentUser))throw new Error('Only moderators can update songs.');
+ const {songDetails}=await import('./song-model.js'),ref=doc(db,'songCatalog',key);
+ await runTransaction(db,async t=>{const s=await t.get(ref);if(!s.exists())throw new Error('Song no longer exists.');t.update(ref,{...(details?songDetails(details):{}),status:status||s.data().status,updatedAt:serverTimestamp()});});
+}

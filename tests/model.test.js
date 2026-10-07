@@ -17,3 +17,12 @@ test('band privileges require a verified exact account',()=>{
  assert.equal(isBand({email:'thenickel64@gmail.com',emailVerified:false}),false);
  assert.equal(isBand({email:'client@example.com',emailVerified:true}),false);
 });
+
+import { songKey,matchingSongs,exactSong,songDetails } from '../dist/song-model.js';
+test('song identity ignores case and spaces while allowing another artist',async()=>{
+ assert.equal(await songKey('  All   of Me ','John Legend'),await songKey('all of me','JOHN LEGEND'));
+ assert.notEqual(await songKey('All of Me','John Legend'),await songKey('All of Me','Other artist'));
+ const songs=[{title:'All of Me',artist:'John Legend'},{title:'All of Me',artist:'Other artist'}];
+ assert.equal(matchingSongs(songs,'OF M').length,2);assert.equal(exactSong(songs,'all of me','JOHN LEGEND'),songs[0]);
+ assert.deepEqual(songDetails({}),{bpm:null,year:null,seconds:null});assert.throws(()=>songDetails({seconds:-1}));
+});

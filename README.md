@@ -22,6 +22,14 @@ Sign in with Google or email/password. Email/password users must verify their em
 
 Records live in the **`setlists` named database**, Firestore Enterprise Native mode, Toronto (`northamerica-northeast2`), with realtime updates enabled. Realtime queries are used so the duo's inbox receives clients' saves immediately. Security Rules enforce verified identities, fixed ownership, exact schema, song IDs, field-size limits, server timestamps and derived duration. No setlist data is publicly readable.
 
+## Song requests and hearts
+
+Verified users can request a song with title and artist; BPM, year and duration in seconds are optional. Partial title matches show existing repertoire and requests. Normalized title + artist identifies a request, so matching requests are reused and another artist is a separate entry. Requests can be included in a setlist while awaiting a decision; their status appears in the planner and exported text.
+
+Moderators approve, deny and edit details. Approved songs join everyone's repertoire immediately. Denied requests remain visible to signed-in users and can be supported with a heart. Adding a song also gives it one heart per verified account; repeat additions do not inflate the count. Hearts are permanent expressions of interest, independent of subsequent removal from a setlist.
+
+The shared `songCatalog` holds repertoire, requests, decisions and counts. Individual vote documents are private and immutable. Atomic transactions and rules enforce one vote per account. Realtime listeners propagate details and decisions immediately; title search filters the realtime catalog. The deployment imports the original 103 songs once and preserves moderator edits and votes on subsequent deploys.
+
 ## Deployment
 
 The `Test and deploy Nickel 64` GitHub Action runs model and Firestore emulator tests, checks and deploys rules/indexes, configures sign-in domains/email authentication, and deploys the static app to Firebase Hosting. It uses the existing **`FIREBASE_SERVICE_ACCOUNT`** secret; no administrative key is included in the source or browser. Firebase web configuration is public.

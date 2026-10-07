@@ -56,3 +56,32 @@ test('sharing roles enforce read, edit and ownership permissions and revocation'
  await assertFails(updateDoc(ref(alice),{access:next,sharedWith:['outsider@example.com'],updatedAt:serverTimestamp()}));
  await assertFails(getDoc(ref(ctx('unverified','co@example.com',false))));
 });
+
+const songId='song_'+'a'.repeat(64);
+const songRef=db=>doc(db,'songCatalog',songId);
+const songRecord=()=>({id:songId,title:'Requested song',artist:'Artist',bpm:null,year:null,seconds:null,status:'pending',requestedBy:'alice',likes:0,createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
+async function castHeart(db,uid){await runTransaction(db,async t=>{const song=songRef(db),vote=doc(db,'songCatalog',songId,'likes',uid);const current=await t.get(song);await t.get(vote);t.update(song,{likes:current.data().likes+1});t.set(vote,{uid,createdAt:serverTimestamp()});});}
+test('requests require verified users; decisions and optional details belong to moderators',async()=>{
+ const alice=ctx('alice');await assertSucceeds(setDoc(songRef(alice),songRecord()));
+ await assertFails(setDoc(doc(alice,'songCatalog','song_'+'b'.repeat(64)),{...songRecord(),id:'song_'+'b'.repeat(64),status:'approved'}));
+ await assertFails(getDoc(songRef(env.unauthenticatedContext().firestore())));
+ await assertSucceeds(getDoc(songRef(ctx('bob'))));
+ await assertFails(updateDoc(songRef(alice),{status:'approved',updatedAt:serverTimestamp()}));
+ const rob=ctx('rob','thenickel64@gmail.com');await assertSucceeds(updateDoc(songRef(rob),{status:'denied',updatedAt:serverTimestamp()}));
+ await assertSucceeds(getDoc(songRef(ctx('bob'))));
+ await assertFails(updateDoc(songRef(rob),{seconds:-1,updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(songRef(rob),{status:'approved',bpm:100,year:2020,seconds:240,updatedAt:serverTimestamp()}));
+ await assertSucceeds(getDocs(query(collection(env.unauthenticatedContext().firestore(),'songCatalog'),where('status','==','approved'))));
+ await assertFails(setDoc(songRef(ctx('unverified','u@example.com',false)),songRecord()));
+ await seed();await assertSucceeds(updateDoc(ref(alice),{songIds:[0,songId],updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(alice),{songIds:['fake-song'],updatedAt:serverTimestamp()}));
+});
+test('hearts require an atomic per-user vote and cannot be inflated or forged',async()=>{
+ const alice=ctx('alice');await setDoc(songRef(alice),songRecord());
+ await assertFails(updateDoc(songRef(alice),{likes:1}));
+ await assertSucceeds(castHeart(alice,'alice'));await assertFails(castHeart(alice,'alice'));
+ await assertFails(castHeart(ctx('bob'),'alice'));await assertSucceeds(castHeart(ctx('bob'),'bob'));
+ const count=(await getDoc(songRef(alice))).data().likes;if(count!==2)throw new Error('Heart count must be two distinct users');
+ await assertFails(updateDoc(songRef(ctx('rob','thenickel64@gmail.com')),{likes:100,updatedAt:serverTimestamp()}));
+ await assertFails(deleteDoc(doc(alice,'songCatalog',songId,'likes','alice')));
+});

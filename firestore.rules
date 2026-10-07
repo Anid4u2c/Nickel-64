@@ -39,9 +39,9 @@ service cloud.firestore {
         && d.endMinutes is int && d.endMinutes >= 0 && d.endMinutes < 1440
         && d.startMinutes != d.endMinutes
         && d.durationMinutes is int && d.durationMinutes == (d.endMinutes - d.startMinutes + 1440) % 1440
-        && d.songIds is list && d.songIds.size() > 0 && d.songIds.size() <= 103
+        && d.songIds is list && d.songIds.size() > 0 && d.songIds.size() <= 200
         && d.songIds.toSet().size() == d.songIds.size()
-        && d.songIds.toSet().hasOnly([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102])
+        && d.songIds.removeAll([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102]).join(',').matches('(song_[a-f0-9]{64})(,song_[a-f0-9]{64})*|')
         && d.createdAt is timestamp && d.updatedAt is timestamp;
     }
     match /setlists/{setlistId} {
@@ -60,6 +60,45 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
+    }
+    function optionalNumber(value, min, max) { return value == null || (value is int && value >= min && value <= max); }
+    function validSong(d) {
+      return d.keys().hasAll(['id','title','artist','bpm','year','seconds','status','requestedBy','likes','createdAt','updatedAt'])
+        && d.keys().hasOnly(['id','title','artist','bpm','year','seconds','status','requestedBy','likes','createdAt','updatedAt'])
+        && (d.id is int || d.id is string)
+        && d.title is string && d.title.size() > 0 && d.title.size() <= 160
+        && d.artist is string && d.artist.size() > 0 && d.artist.size() <= 160
+        && optionalNumber(d.bpm,1,400) && optionalNumber(d.year,1900,2100) && optionalNumber(d.seconds,1,7200)
+        && d.status in ['pending','approved','denied']
+        && d.requestedBy is string && d.requestedBy.size() > 0 && d.requestedBy.size() <= 128
+        && d.likes is int && d.likes >= 0
+        && d.createdAt is timestamp && d.updatedAt is timestamp;
+    }
+    match /songCatalog/{songId} {
+      allow get: if authenticated() || resource.data.status == 'approved';
+      allow list: if authenticated() || resource.data.status == 'approved';
+      allow create: if authenticated() && validSong(request.resource.data)
+        && songId.matches('song_[a-f0-9]{64}') && request.resource.data.id == songId
+        && request.resource.data.requestedBy == request.auth.uid
+        && request.resource.data.status == 'pending' && request.resource.data.likes == 0
+        && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
+      allow update: if authenticated() && validSong(request.resource.data) && (
+        (bandViewer() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bpm','year','seconds','status','updatedAt'])
+          && request.resource.data.updatedAt == request.time)
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+          && request.resource.data.likes == resource.data.likes + 1
+          && !exists(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid))
+          && getAfter(/databases/$(database)/documents/songCatalog/$(songId)/likes/$(request.auth.uid)).data.uid == request.auth.uid));
+      allow delete: if false;
+      match /likes/{uid} {
+        allow get: if authenticated() && request.auth.uid == uid;
+        allow list: if false;
+        allow create: if authenticated() && request.auth.uid == uid
+          && request.resource.data.keys().hasAll(['uid','createdAt']) && request.resource.data.keys().hasOnly(['uid','createdAt'])
+          && request.resource.data.uid == uid && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/songCatalog/$(songId)).data.likes == get(/databases/$(database)/documents/songCatalog/$(songId)).data.likes + 1;
+        allow update,delete: if false;
+      }
     }
     match /{document=**} { allow read, write: if false; }
   }
