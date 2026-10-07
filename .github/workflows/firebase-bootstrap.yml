@@ -1,0 +1,33 @@
+name: Set up Firebase for shared setlists
+on:
+  push:
+    paths:
+      - '.github/workflows/firebase-bootstrap.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firebase-bootstrap
+  cancel-in-progress: false
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+      - name: Create Toronto database if absent
+        shell: bash
+        run: |
+          npx -y firebase-tools@latest firestore:databases:list --project nickel-64 --json --non-interactive > /tmp/databases.json
+          if node -e "const d=require('/tmp/databases.json');process.exit(d.result.some(x=>x.name.endsWith('/(default)'))?0:1)"; then
+            echo 'Default database already exists.'
+          else
+            npx -y firebase-tools@latest firestore:databases:create '(default)' --edition enterprise --location northamerica-northeast2 --project nickel-64 --non-interactive
+          fi
+      - name: Confirm edition
+        run: npx -y firebase-tools@latest firestore:databases:get '(default)' --project nickel-64 --json --non-interactive
