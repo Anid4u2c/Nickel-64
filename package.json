@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test tests/model.test.js",
+    "test": "node --test tests/model.test.js tests/dependencies.test.js",
     "test:rules": "node --test tests/rules.test.js"
   },
   "devDependencies": {
@@ -12,5 +12,14 @@
     "firebase": "^12.19.0",
     "firebase-admin": "^14.5.0",
     "google-auth-library": "^10.5.0"
+  },
+  "engines": {
+    "node": ">=22.14.0"
+  },
+  "overrides": {
+    "@grpc/grpc-js": "1.14.5",
+    "gaxios": {
+      "uuid": "14.0.0"
+    }
   }
 }
