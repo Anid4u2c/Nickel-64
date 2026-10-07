@@ -24,10 +24,10 @@ jobs:
         shell: bash
         run: |
           npx -y firebase-tools@latest firestore:databases:list --project nickel-64 --json --non-interactive > /tmp/databases.json
-          if node -e "const d=require('/tmp/databases.json');process.exit(d.result.some(x=>x.name.endsWith('/(default)'))?0:1)"; then
-            echo 'Default database already exists.'
+          if node -e "const d=require('/tmp/databases.json');process.exit(d.result.some(x=>x.name.endsWith('/setlists'))?0:1)"; then
+            echo 'Setlists database already exists.'
           else
-            npx -y firebase-tools@latest firestore:databases:create '(default)' --edition enterprise --location northamerica-northeast2 --project nickel-64 --non-interactive
+            npx -y firebase-tools@latest firestore:databases:create setlists --edition enterprise --firestore-data-access ENABLED --mongodb-compatible-data-access DISABLED --realtime-updates ENABLED --location northamerica-northeast2 --project nickel-64 --non-interactive
           fi
       - name: Confirm edition
-        run: npx -y firebase-tools@latest firestore:databases:get '(default)' --project nickel-64 --json --non-interactive
+        run: npx -y firebase-tools@latest firestore:databases:get setlists --project nickel-64 --json --non-interactive
