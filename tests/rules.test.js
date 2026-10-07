@@ -1,7 +1,7 @@
 import test,{before,after,beforeEach} from 'node:test';
 import fs from 'node:fs';
 import { initializeTestEnvironment,assertSucceeds,assertFails } from '@firebase/rules-unit-testing';
-import { doc,setDoc,getDoc,getDocs,collection,query,where,updateDoc,deleteDoc,serverTimestamp,Timestamp,deleteField } from 'firebase/firestore';
+import { doc,setDoc,getDoc,getDocs,collection,query,where,updateDoc,deleteDoc,serverTimestamp,Timestamp,deleteField,runTransaction } from 'firebase/firestore';
 let env;
 before(async()=>{env=await initializeTestEnvironment({projectId:'demo-nickel-64',firestore:{rules:fs.readFileSync('firestore.rules','utf8'),host:'127.0.0.1',port:8080}});});
 after(async()=>{await env?.cleanup();});beforeEach(async()=>{await env.clearFirestore();});
@@ -29,4 +29,10 @@ test('validation rejects bad schedules, duration tampering, song pollution and l
  for(let i=0;i<attacks.length;i++){await assertFails(setDoc(ref(db,'attack'+i),record(attacks[i])));await assertFails(updateDoc(ref(db),{...attacks[i],updatedAt:serverTimestamp()}));}
  await assertSucceeds(updateDoc(ref(db),{notes:'Updated',updatedAt:serverTimestamp()}));
  await assertFails(setDoc(ref(ctx('alice','client@example.com',false),'unverified'),record()));
+});
+
+test('a client can transactionally create a new record and reject an existing cross-owner record',async()=>{
+ const db=ctx('alice');await assertSucceeds(runTransaction(db,async t=>{const fresh=ref(db,'transaction');const snapshot=await t.get(fresh);if(snapshot.exists())throw new Error('Unexpected document');t.set(fresh,record());}));
+ await assertFails(runTransaction(ctx('bob'),async t=>{await t.get(ref(ctx('bob'),'transaction'));}));
+ await assertFails(getDoc(ref(env.unauthenticatedContext().firestore(),'missing')));
 });

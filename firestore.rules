@@ -29,7 +29,10 @@ service cloud.firestore {
         && d.createdAt is timestamp && d.updatedAt is timestamp;
     }
     match /setlists/{setlistId} {
-      allow read: if bandViewer() || owner(resource.data);
+      // A transaction must be able to confirm a new random ID does not exist.
+      // Existing records still require owner/duo access; collection queries stay scoped.
+      allow get: if authenticated() && (!exists(/databases/$(database)/documents/setlists/$(setlistId)) || bandViewer() || owner(resource.data));
+      allow list: if bandViewer() || owner(resource.data);
       allow create: if owner(request.resource.data) && validSetlist(request.resource.data)
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
       allow update: if owner(resource.data) && validSetlist(request.resource.data)
