@@ -116,3 +116,22 @@ test('regular users submit recording links with new requests; only moderators ed
  for(const links of [{youtube:'javascript:alert(1)'},{spotify:'https://example.com/track'},{n64:'https://user:password@example.com/recording'},{other:'https://example.com/music'}])await assertFails(updateDoc(songRef(rob),{links,updatedAt:serverTimestamp()}));
  const id='song_'+'c'.repeat(64);await assertFails(setDoc(doc(alice,'songCatalog',id),{...songRecord(),id,links:{n64:'https://example.com/duo'}}));
 });
+
+test('song notes are setlist-scoped: regular editors write, viewers and moderators only read',async()=>{
+ const alice=ctx('alice'),bob=ctx('bob','bob@example.com'),viewer=ctx('viewer','viewer@example.com'),rob=ctx('rob','thenickel64@gmail.com');
+ await assertSucceeds(setDoc(ref(alice),record({ownerEmail:'client@example.com',access:{'bob@example.com':'editor','viewer@example.com':'viewer'},sharedWith:['bob@example.com','viewer@example.com']})));
+ const note=db=>doc(db,'setlists','one','songNotes','0');const data=(uid,text='My walk-in song')=>({text,updatedBy:uid,updatedAt:serverTimestamp()});
+ await assertSucceeds(setDoc(note(alice),data('alice')));await assertSucceeds(setDoc(note(bob),data('bob','First dance')));
+ for(const db of [alice,bob,viewer,rob]){await assertSucceeds(getDoc(note(db)));await assertSucceeds(getDocs(collection(db,'setlists','one','songNotes')));}
+ await assertFails(setDoc(note(viewer),data('viewer')));await assertFails(setDoc(note(rob),data('rob')));
+ await assertFails(getDoc(note(ctx('outsider'))));await assertFails(getDocs(collection(ctx('outsider'),'setlists','one','songNotes')));
+ await assertFails(getDoc(note(env.unauthenticatedContext().firestore())));
+ await assertFails(setDoc(note(alice),data('bob')));await assertFails(setDoc(note(alice),data('alice','x'.repeat(1001))));await assertFails(updateDoc(note(alice),{text:1,updatedAt:serverTimestamp()}));await assertFails(updateDoc(note(alice),{text:deleteField(),updatedAt:serverTimestamp()}));await assertFails(setDoc(note(alice),{...data('alice'),extra:true}));
+ await assertFails(setDoc(doc(alice,'setlists','one','songNotes','102'),data('alice')));await assertFails(setDoc(doc(alice,'setlists','missing','songNotes','0'),data('alice')));await assertFails(getDoc(doc(rob,'setlists','missing','songNotes','0')));
+ await assertSucceeds(setDoc(note(alice),data('alice','')));
+ await assertSucceeds(setDoc(ref(rob,'own-band'),record({ownerUid:'rob',ownerEmail:'thenickel64@gmail.com',access:{},sharedWith:[]})));
+ await assertFails(setDoc(doc(rob,'setlists','own-band','songNotes','0'),data('rob')));
+});
+test('draft song notes can be saved atomically with the initial setlist',async()=>{
+ const db=ctx('alice');await assertSucceeds(runTransaction(db,async t=>{t.set(ref(db),record());t.set(doc(db,'setlists','one','songNotes','1'),{text:'Walk-in',updatedBy:'alice',updatedAt:serverTimestamp()});}));
+});

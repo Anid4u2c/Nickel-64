@@ -38,6 +38,7 @@ export async function savePlan(plan,expectedUpdatedAt) {
     const previous=existing.exists()?existing.data():null;
     const record={ownerUid:previous?.ownerUid||user.uid,ownerEmail:previous?.ownerEmail||user.email.toLowerCase(),access:previous?.access||{},sharedWith:previous?.sharedWith||[],event:plan.event.trim(),notes:plan.notes,eventDate:Timestamp.fromDate(new Date(plan.date+'T00:00:00Z')),startMinutes,endMinutes,durationMinutes:duration,songIds:plan.ids,createdAt:existing.exists()?existing.data().createdAt:serverTimestamp(),updatedAt:serverTimestamp()};
     transaction.set(ref,record);
+    if(!previous&&!isBand(user))for(const [songId,text] of Object.entries(plan.songNotes||{})){if(plan.ids.some(id=>String(id)===songId)&&typeof text==='string'&&text.trim())transaction.set(doc(db,'setlists',ref.id,'songNotes',songId),{text:text.trim().slice(0,1000),updatedAt:serverTimestamp(),updatedBy:user.uid});}
   });
   const saved=await getDocFromServer(ref);return {id:ref.id,updatedAt:saved.data().updatedAt,record:saved.data()};
 }
@@ -91,3 +92,6 @@ export async function saveSongs(id,ids,expectedIds){
  await runTransaction(db,async t=>{const current=await t.get(ref);if(!current.exists())throw new Error('This setlist is no longer available.');const record=current.data();if(!canEditSetlist(record,user))throw new Error('You no longer have edit access to this setlist.');if(!sameIds(record.songIds,expectedIds))throw new Error('Songs changed on another device. Reload the saved version before changing them.');t.update(ref,{songIds:ids,updatedAt:serverTimestamp()});});
  const saved=await getDocFromServer(ref);if(!sameIds(saved.data().songIds,ids))throw new Error('Songs changed on another device. Reload the saved version.');return {id:saved.id,...saved.data()};
 }
+
+export function watchSongNotes(id,onData,onError){return onSnapshot(collection(db,'setlists',id,'songNotes'),snapshot=>onData(Object.fromEntries(snapshot.docs.map(d=>[d.id,d.data().text]))),onError);}
+export async function saveSongNote(id,songId,text){const user=auth.currentUser;if(!user?.emailVerified||isBand(user))throw new Error('Only regular setlist owners and editors can update song notes.');if(typeof text!=='string'||text.length>1000)throw new Error('Song notes can contain up to 1,000 characters.');const parent=doc(db,'setlists',id),ref=doc(parent,'songNotes',String(songId));await runTransaction(db,async t=>{const current=await t.get(parent);if(!current.exists()||!canEditSetlist(current.data(),user)||!current.data().songIds.includes(songId))throw new Error('This song is no longer in an editable setlist.');t.set(ref,{text:text.trim(),updatedBy:user.uid,updatedAt:serverTimestamp()});});}

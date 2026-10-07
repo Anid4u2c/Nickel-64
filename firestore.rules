@@ -1,4 +1,5 @@
 // Shared setlists: ownerUid (immutable, 1–128 chars), event (1–120 chars),
+// Song notes: setlists/{id}/songNotes/{songId}: text (0–1000 chars), updatedBy (current UID), updatedAt (server timestamp). Regular editors write; authorized viewers and band read.
 // notes (0–4000 chars), eventDate (UTC calendar date timestamp), startMinutes /
 // endMinutes (0–1439), durationMinutes (derived 1–1439), songIds (0–200 unique
 // library IDs), createdAt (immutable server timestamp), updatedAt (server timestamp).
@@ -61,6 +62,16 @@ service cloud.firestore {
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
+      match /songNotes/{songId} {
+        function parent() { return get(/databases/$(database)/documents/setlists/$(setlistId)).data; }
+        function afterParent() { return getAfter(/databases/$(database)/documents/setlists/$(setlistId)).data; }
+        function validSongNote(d) { return d.keys().hasAll(['text','updatedBy','updatedAt']) && d.keys().hasOnly(['text','updatedBy','updatedAt']) && d.text is string && d.text.size() <= 1000 && d.updatedBy == request.auth.uid && d.updatedAt == request.time; }
+        allow read: if authenticated() && exists(/databases/$(database)/documents/setlists/$(setlistId)) && (bandViewer() || owner(parent()) || shared(parent()));
+        allow create, update: if authenticated() && !bandViewer() && editor(afterParent())
+          && songId in afterParent().songIds.join(',').split(',')
+          && validSongNote(request.resource.data);
+        allow delete: if false;
+      }
     }
     function optionalNumber(value, min, max) { return value == null || (value is int && value >= min && value <= max); }
     function validLink(value, host) { return value is string && value.size() <= 2000 && value.matches('https://(' + host + ')/[^ ]*'); }

@@ -6,7 +6,7 @@ import { getAuth as adminAuth } from 'firebase-admin/auth';
 import { getFirestore as adminFirestore } from 'firebase-admin/firestore';
 import { initializeApp,deleteApp } from 'firebase/app';
 import { getAuth,signInWithCustomToken,signOut } from 'firebase/auth';
-import { getFirestore,doc,runTransaction,getDocFromServer,collection,query,where,getDocs,serverTimestamp,Timestamp,terminate } from 'firebase/firestore';
+import { getFirestore,doc,runTransaction,getDocFromServer,collection,query,where,getDocs,setDoc,serverTimestamp,Timestamp,terminate } from 'firebase/firestore';
 import { firebaseConfig,databaseId } from '../dist/firebase-config.js';
 const uid='deployment-check-'+randomUUID(),recordId='deployment-check-'+randomUUID(),songId='song_'+createHash('sha256').update(randomUUID()).digest('hex');
 const admin=initializeAdmin({credential:cert(process.env.GOOGLE_APPLICATION_CREDENTIALS),projectId:'nickel-64'});
@@ -21,6 +21,7 @@ try {
     if((await transaction.get(ref)).exists())throw new Error('Unexpected test record');
     transaction.set(ref,{ownerUid:uid,ownerEmail:uid+'@example.com',access:{},sharedWith:[],event:'Deployment verification (temporary)',notes:'Automatically removed after the check.',eventDate:Timestamp.fromDate(new Date('2027-06-12T00:00:00Z')),startMinutes:1350,endMinutes:60,durationMinutes:150,songIds:[0,1],createdAt:serverTimestamp(),updatedAt:serverTimestamp()});
   });
+  const note=doc(db,'setlists',recordId,'songNotes','0');await setDoc(note,{text:'Walk-in verification',updatedBy:uid,updatedAt:serverTimestamp()});if((await getDocFromServer(note)).data().text!=='Walk-in verification')throw new Error('Song note readback mismatch');await getDocs(collection(db,'setlists',recordId,'songNotes'));
   const saved=await getDocFromServer(ref);
   if(!saved.exists()||saved.data().durationMinutes!==150)throw new Error('Saved event duration mismatch');
   const inbox=await getDocs(query(collection(db,'setlists'),where('ownerUid','==',uid)));
@@ -48,6 +49,7 @@ try {
 finally {
   await adminFirestore(admin,databaseId).doc('songCatalog/'+songId+'/likes/'+uid).delete();
   await adminFirestore(admin,databaseId).doc('songCatalog/'+songId).delete();
+  await adminFirestore(admin,databaseId).doc('setlists/'+recordId+'/songNotes/0').delete();
   await adminFirestore(admin,databaseId).doc('setlists/'+recordId).delete();
   if(createdUser)await adminAuth(admin).deleteUser(uid);
   await terminate(db);await deleteApp(browser);await adminFirestore(admin,databaseId).terminate();await deleteAdmin(admin);
