@@ -10,6 +10,17 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "setlists",
+      "queryScope": "COLLECTION",
+      "density": "DENSE",
+      "fields": [
+        {
+          "fieldPath": "sharedWith",
+          "arrayConfig": "CONTAINS"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

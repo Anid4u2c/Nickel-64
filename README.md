@@ -13,10 +13,11 @@ Browse 103 songs, search/filter the library, order a setlist, record an event da
 
 Sign in with Google or email/password. Email/password users must verify their email before saving. Click **Save for Nickel 64** to share the current draft; local drafts remain on the current device until saved.
 
-- Clients read and update only their own saved setlists.
+- Clients read their owned setlists and those explicitly shared with their verified email.
 - Verified `davecarlsonguitar@gmail.com` and `thenickel64@gmail.com` accounts can view all saved setlists.
 - Verified app owner `nick@itness.ca` can also view all saved setlists.
-- Only a setlist's creator may edit it. Viewers cannot modify clients' records.
+- Owners can add, change and remove email-based shares: **Can edit** (default), **View only**, or **Additional owner**. Editors change the setlist; additional owners also manage sharing. The original creator retains immutable ownership. Up to 25 collaborators may be added.
+- Moderator accounts can toggle between the duo’s all-setlists view and a regular view showing only their owned/shared records. This changes the displayed experience without impersonating another account.
 - Saves use transactions with an expected update timestamp to reject concurrent overwrites. Reopen the latest saved record if a restored device draft cannot be saved.
 
 Records live in the **`setlists` named database**, Firestore Enterprise Native mode, Toronto (`northamerica-northeast2`), with realtime updates enabled. Realtime queries are used so the duo's inbox receives clients' saves immediately. Security Rules enforce verified identities, fixed ownership, exact schema, song IDs, field-size limits, server timestamps and derived duration. No setlist data is publicly readable.

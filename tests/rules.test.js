@@ -36,3 +36,23 @@ test('a client can transactionally create a new record and reject an existing cr
  const bob=ctx('bob');await assertFails(runTransaction(bob,async t=>{await t.get(ref(bob,'transaction'));}));
  await assertFails(getDoc(ref(env.unauthenticatedContext().firestore(),'missing')));
 });
+
+test('sharing roles enforce read, edit and ownership permissions and revocation',async()=>{
+ await seed();const alice=ctx('alice'),edit=ctx('edit','edit@example.com'),view=ctx('view','view@example.com'),co=ctx('co','co@example.com');
+ const access={'edit@example.com':'editor','view@example.com':'viewer','co@example.com':'owner'};
+ await assertSucceeds(updateDoc(ref(alice),{ownerEmail:'client@example.com',access,sharedWith:Object.keys(access),updatedAt:serverTimestamp()}));
+ for(const db of [edit,view,co])await assertSucceeds(getDoc(ref(db)));
+ await assertSucceeds(getDocs(query(collection(edit,'setlists'),where('sharedWith','array-contains','edit@example.com'))));
+ await assertFails(getDocs(collection(edit,'setlists')));
+ await assertSucceeds(updateDoc(ref(edit),{notes:'Edited',updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(view),{notes:'Forbidden',updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(edit),{access:{},sharedWith:[],updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(co),{ownerUid:'co',updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(co),{ownerEmail:'co@example.com',updatedAt:serverTimestamp()}));
+ const next={'co@example.com':'owner'};
+ await assertSucceeds(updateDoc(ref(co),{access:next,sharedWith:Object.keys(next),updatedAt:serverTimestamp()}));
+ await assertFails(getDoc(ref(edit)));await assertFails(getDoc(ref(view)));
+ await assertFails(updateDoc(ref(alice),{access:{'bad@example.com':'admin'},sharedWith:['bad@example.com'],updatedAt:serverTimestamp()}));
+ await assertFails(updateDoc(ref(alice),{access:next,sharedWith:['outsider@example.com'],updatedAt:serverTimestamp()}));
+ await assertFails(getDoc(ref(ctx('unverified','co@example.com',false))));
+});

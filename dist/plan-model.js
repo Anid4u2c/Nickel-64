@@ -16,3 +16,12 @@ export function validDate(date) {
 }
 export const BAND_EMAILS = ['davecarlsonguitar@gmail.com', 'thenickel64@gmail.com', 'nick@itness.ca'];
 export function isBand(user) { return !!user?.emailVerified && BAND_EMAILS.includes(user.email?.toLowerCase()); }
+
+export function setlistRole(record,user) {
+  if(!user?.emailVerified)return null;
+  if(record.ownerUid===user.uid)return 'owner';
+  return record.access?.[user.email?.toLowerCase()]||null;
+}
+export function canEditSetlist(record,user){return ['owner','editor'].includes(setlistRole(record,user));}
+export function canManageSetlist(record,user){return setlistRole(record,user)==='owner';}
+export function regularVisible(record,user){return record.ownerUid===user?.uid||(record.sharedWith||[]).includes(user?.email?.toLowerCase());}

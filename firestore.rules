@@ -11,9 +11,25 @@ service cloud.firestore {
       return authenticated() && request.auth.token.email in ['davecarlsonguitar@gmail.com', 'thenickel64@gmail.com', 'nick@itness.ca'];
     }
     function owner(data) { return authenticated() && data.ownerUid == request.auth.uid; }
+    function email() { return request.auth.token.email.lower(); }
+    function shared(d) { return authenticated() && email() in d.get('sharedWith', []); }
+    function manager(d) { return owner(d) || (authenticated() && d.get('access', {}).get(email(), '') == 'owner'); }
+    function editor(d) { return owner(d) || (authenticated() && d.get('access', {}).get(email(), '') in ['editor','owner']); }
+    function validSharing(d) {
+      return !d.keys().hasAny(['ownerEmail','access','sharedWith']) || (
+        d.keys().hasAll(['ownerEmail','access','sharedWith'])
+        && d.ownerEmail is string && d.ownerEmail.size() <= 254 && d.ownerEmail.matches('[^ @]+@[^ @]+\\.[^ @]+')
+        && d.access is map && d.access.size() <= 25
+        && d.access.values().toSet().hasOnly(['viewer','editor','owner'])
+        && d.sharedWith is list && d.sharedWith.size() == d.access.size()
+        && d.sharedWith.toSet().size() == d.sharedWith.size()
+        && d.sharedWith.toSet() == d.access.keys().toSet()
+        && d.sharedWith.join(',').size() <= 6375
+        && !(d.ownerEmail in d.sharedWith));
+    }
     function validSetlist(d) {
       return d.keys().hasAll(['ownerUid','event','notes','eventDate','startMinutes','endMinutes','durationMinutes','songIds','createdAt','updatedAt'])
-        && d.keys().hasOnly(['ownerUid','event','notes','eventDate','startMinutes','endMinutes','durationMinutes','songIds','createdAt','updatedAt'])
+        && validSharing(d) && d.keys().hasOnly(['ownerEmail','access','sharedWith','ownerUid','event','notes','eventDate','startMinutes','endMinutes','durationMinutes','songIds','createdAt','updatedAt'])
         && d.ownerUid is string && d.ownerUid.size() > 0 && d.ownerUid.size() <= 128
         && d.event is string && d.event.size() > 0 && d.event.size() <= 120
         && d.notes is string && d.notes.size() <= 4000
@@ -31,11 +47,15 @@ service cloud.firestore {
     match /setlists/{setlistId} {
       // A transaction must be able to confirm a new random ID does not exist.
       // Existing records still require owner/duo access; collection queries stay scoped.
-      allow get: if authenticated() && (!exists(/databases/$(database)/documents/setlists/$(setlistId)) || bandViewer() || owner(resource.data));
-      allow list: if bandViewer() || owner(resource.data);
+      allow get: if authenticated() && (!exists(/databases/$(database)/documents/setlists/$(setlistId)) || bandViewer() || owner(resource.data) || shared(resource.data));
+      allow list: if bandViewer() || owner(resource.data) || shared(resource.data);
       allow create: if owner(request.resource.data) && validSetlist(request.resource.data)
+        && request.resource.data.get('ownerEmail', email()) == email()
+        && request.resource.data.get('sharedWith', []).size() == 0
         && request.resource.data.createdAt == request.time && request.resource.data.updatedAt == request.time;
-      allow update: if owner(resource.data) && validSetlist(request.resource.data)
+      allow update: if editor(resource.data) && validSetlist(request.resource.data)
+        && (manager(resource.data) || !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerEmail','access','sharedWith']))
+        && request.resource.data.get('ownerEmail', '') == resource.data.get('ownerEmail', request.resource.data.keys().hasAny(['ownerEmail']) && owner(resource.data) ? email() : '')
         && request.resource.data.ownerUid == resource.data.ownerUid
         && request.resource.data.createdAt == resource.data.createdAt
         && request.resource.data.updatedAt == request.time;
