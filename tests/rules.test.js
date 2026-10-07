@@ -104,3 +104,5 @@ test('moderators may add approved songs; regular users may not; hearts can be at
  await assertFails(updateDoc(songRef(alice),{likes:-1}));
  await assertSucceeds(castHeart(alice,'alice'));
 });
+
+test('moderators can save classical and ancient composition years',async()=>{const alice=ctx('alice');await setDoc(songRef(alice),songRecord());const rob=ctx('rob','thenickel64@gmail.com');for(const year of [1680,-1950,-2000])await assertSucceeds(updateDoc(songRef(rob),{year,updatedAt:serverTimestamp()}));await assertFails(updateDoc(songRef(rob),{year:-2001,updatedAt:serverTimestamp()}));});

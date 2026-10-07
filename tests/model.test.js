@@ -37,3 +37,5 @@ test('live song syncing keeps unfinished details and detects competing detail ed
  assert.deepEqual(mergeDetails(local,baseline,{...remote,notes:'Someone else edited'}).conflicts,['notes']);
  assert.equal(sameIds([0,1],[1,0]),false);assert.equal(sameIds([],[]),true);
 });
+
+test('composition years include older classical and ancient works',()=>{for(const year of [1680,-1950,-2000])assert.equal(songDetails({year}).year,year);assert.throws(()=>songDetails({year:-2001}));});
