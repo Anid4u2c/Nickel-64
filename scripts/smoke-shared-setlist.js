@@ -1,7 +1,7 @@
 // Create one disposable test identity and setlist, verify browser-equivalent access,
 // then delete both. Does not impersonate Dave, Rob or any existing app user.
 import { randomUUID } from 'node:crypto';
-import { initializeApp as initializeAdmin,applicationDefault,deleteApp as deleteAdmin } from 'firebase-admin/app';
+import { initializeApp as initializeAdmin,cert,deleteApp as deleteAdmin } from 'firebase-admin/app';
 import { getAuth as adminAuth } from 'firebase-admin/auth';
 import { getFirestore as adminFirestore } from 'firebase-admin/firestore';
 import { initializeApp,deleteApp } from 'firebase/app';
@@ -9,7 +9,7 @@ import { getAuth,signInWithCustomToken,signOut } from 'firebase/auth';
 import { getFirestore,doc,runTransaction,getDocFromServer,collection,query,where,getDocs,serverTimestamp,Timestamp,terminate } from 'firebase/firestore';
 import { firebaseConfig,databaseId } from '../dist/firebase-config.js';
 const uid='deployment-check-'+randomUUID(),recordId='deployment-check-'+randomUUID();
-const admin=initializeAdmin({credential:applicationDefault(),projectId:'nickel-64'});
+const admin=initializeAdmin({credential:cert(process.env.GOOGLE_APPLICATION_CREDENTIALS),projectId:'nickel-64'});
 const browser=initializeApp(firebaseConfig,'deployment-check'),auth=getAuth(browser),db=getFirestore(browser,databaseId);
 let createdUser=false;
 try {
