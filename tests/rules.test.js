@@ -119,7 +119,8 @@ test('regular users submit recording links with new requests; only moderators ed
 
 test('song notes are setlist-scoped: regular editors write, viewers and moderators only read',async()=>{
  const alice=ctx('alice'),bob=ctx('bob','bob@example.com'),viewer=ctx('viewer','viewer@example.com'),rob=ctx('rob','thenickel64@gmail.com');
- await assertSucceeds(setDoc(ref(alice),record({ownerEmail:'client@example.com',access:{'bob@example.com':'editor','viewer@example.com':'viewer'},sharedWith:['bob@example.com','viewer@example.com']})));
+ await assertSucceeds(setDoc(ref(alice),record({ownerEmail:'client@example.com',access:{},sharedWith:[]})));
+ await assertSucceeds(updateDoc(ref(alice),{access:{'bob@example.com':'editor','viewer@example.com':'viewer'},sharedWith:['bob@example.com','viewer@example.com'],updatedAt:serverTimestamp()}));
  const note=db=>doc(db,'setlists','one','songNotes','0');const data=(uid,text='My walk-in song')=>({text,updatedBy:uid,updatedAt:serverTimestamp()});
  await assertSucceeds(setDoc(note(alice),data('alice')));await assertSucceeds(setDoc(note(bob),data('bob','First dance')));
  for(const db of [alice,bob,viewer,rob]){await assertSucceeds(getDoc(note(db)));await assertSucceeds(getDocs(collection(db,'setlists','one','songNotes')));}
