@@ -34,8 +34,6 @@ jobs:
         run: npx -y firebase-tools@latest deploy --only firestore:rules --dry-run --project nickel-64 --non-interactive
       - name: Deploy access rules and indexes
         run: npx -y firebase-tools@latest deploy --only firestore --project nickel-64 --non-interactive
-      - name: Enable sign-in providers
-        run: npx -y firebase-tools@latest deploy --only auth --project nickel-64 --non-interactive
       - name: Authorize application domains
         run: node scripts/authorize-domains.js
       - name: Deploy Firebase website
