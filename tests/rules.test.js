@@ -33,6 +33,6 @@ test('validation rejects bad schedules, duration tampering, song pollution and l
 
 test('a client can transactionally create a new record and reject an existing cross-owner record',async()=>{
  const db=ctx('alice');await assertSucceeds(runTransaction(db,async t=>{const fresh=ref(db,'transaction');const snapshot=await t.get(fresh);if(snapshot.exists())throw new Error('Unexpected document');t.set(fresh,record());}));
- await assertFails(runTransaction(ctx('bob'),async t=>{await t.get(ref(ctx('bob'),'transaction'));}));
+ const bob=ctx('bob');await assertFails(runTransaction(bob,async t=>{await t.get(ref(bob,'transaction'));}));
  await assertFails(getDoc(ref(env.unauthenticatedContext().firestore(),'missing')));
 });

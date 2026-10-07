@@ -36,5 +36,7 @@ jobs:
         run: npx -y firebase-tools@latest deploy --only firestore --project nickel-64 --non-interactive
       - name: Authorize application domains
         run: node scripts/authorize-domains.js
+      - name: Verify live shared setlists
+        run: node scripts/smoke-shared-setlist.js
       - name: Deploy Firebase website
         run: npx -y firebase-tools@latest deploy --only hosting --project nickel-64 --non-interactive
