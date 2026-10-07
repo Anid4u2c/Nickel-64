@@ -49,3 +49,7 @@ npx -y firebase-tools@latest emulators:exec --only firestore --project demo-nick
 ```
 
 The rules tests cover client isolation, the duo's view access, denial of unverified accounts, immutable ownership and timestamps, schema pollution, malformed schedules, invalid song IDs and oversized writes. Browser interaction checks covered mobile layout, overnight schedules, shared-save success/failure, and viewing another client's record using a mocked cloud service. Live sign-in with Rob and Dave's accounts has not been performed.
+
+Recording links support YouTube Music, YouTube, Spotify, Apple Music, SoundCloud and moderator-only Nickel 64 sources. Regular users submit links with new requests; only verified band moderators can edit existing links. Empty links show no icons. Links are HTTPS and platform-host validated in the UI and database rules. No unverified sample recordings or platform search links have been imported.
+
+Event start/end selectors offer 15-minute increments, with existing off-quarter saved times preserved until changed. The calendar has an explicit open button and a readable selected-date hint.

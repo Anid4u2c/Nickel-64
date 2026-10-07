@@ -39,3 +39,10 @@ test('live song syncing keeps unfinished details and detects competing detail ed
 });
 
 test('composition years include older classical works without BCE input',()=>{for(const year of [1,1680])assert.equal(songDetails({year}).year,year);assert.throws(()=>songDetails({year:-1}));assert.throws(()=>songDetails({year:0}));});
+
+import {musicLinks,renderMusicLinks} from '../dist/music-links.js';
+test('music links accept the requested recording and reject unsafe or mismatched URLs',()=>{
+ const url='https://music.youtube.com/watch?v=kuavpiJDV-c';assert.equal(musicLinks({youtubeMusic:url}).youtubeMusic,url);
+ for(const links of [{youtube:'javascript:alert(1)'},{spotify:'https://example.com/track'},{youtube:'https://youtube.com.evil.test/watch'},{n64:'http://example.com/song'},{n64:'https://user:pass@example.com/song'}])assert.throws(()=>musicLinks(links));
+ assert.equal(renderMusicLinks({title:'Song'},String),'');assert.match(renderMusicLinks({title:'Song',links:{youtubeMusic:url,n64:'https://example.com/song'}},String),/aria-label="Listen to Song on Nickel 64"/);
+});

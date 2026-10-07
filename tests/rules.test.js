@@ -106,3 +106,13 @@ test('moderators may add approved songs; regular users may not; hearts can be at
 });
 
 test('moderators can save positive classical composition years',async()=>{const alice=ctx('alice');await setDoc(songRef(alice),songRecord());const rob=ctx('rob','thenickel64@gmail.com');for(const year of [1,1680])await assertSucceeds(updateDoc(songRef(rob),{year,updatedAt:serverTimestamp()}));await assertFails(updateDoc(songRef(rob),{year:-1,updatedAt:serverTimestamp()}));});
+
+test('regular users submit recording links with new requests; only moderators edit them',async()=>{
+ const alice=ctx('alice'),rob=ctx('rob','thenickel64@gmail.com');
+ await assertSucceeds(setDoc(songRef(alice),{...songRecord(),links:{youtubeMusic:'https://music.youtube.com/watch?v=kuavpiJDV-c'}}));
+ await assertFails(updateDoc(songRef(alice),{links:{spotify:'https://open.spotify.com/track/123'},updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(songRef(rob),{links:{youtube:'https://youtu.be/kuavpiJDV-c',n64:'https://example.com/duo'},updatedAt:serverTimestamp()}));
+ await assertSucceeds(updateDoc(songRef(rob),{links:{},updatedAt:serverTimestamp()}));
+ for(const links of [{youtube:'javascript:alert(1)'},{spotify:'https://example.com/track'},{n64:'https://user:password@example.com/recording'},{other:'https://example.com/music'}])await assertFails(updateDoc(songRef(rob),{links,updatedAt:serverTimestamp()}));
+ const id='song_'+'c'.repeat(64);await assertFails(setDoc(doc(alice,'songCatalog',id),{...songRecord(),id,links:{n64:'https://example.com/duo'}}));
+});
