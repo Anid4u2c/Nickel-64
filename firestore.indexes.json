@@ -1,0 +1,16 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "setlists",
+      "queryScope": "COLLECTION",
+      "density": "DENSE",
+      "fields": [
+        {
+          "fieldPath": "ownerUid",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

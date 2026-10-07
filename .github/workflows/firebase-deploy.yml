@@ -1,0 +1,42 @@
+name: Test and deploy Nickel 64
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['README.md', '.github/workflows/firebase-inspect.yml', '.github/workflows/firebase-bootstrap.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci --no-audit --no-fund
+      - name: Test event schedules and verified band access
+        run: npm test
+      - name: Test database access controls
+        run: npx -y firebase-tools@latest emulators:exec --only firestore --project demo-nickel-64 'npm run test:rules'
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}'
+      - name: Validate rules before deploying
+        run: npx -y firebase-tools@latest deploy --only firestore:rules --dry-run --project nickel-64 --non-interactive
+      - name: Deploy access rules and indexes
+        run: npx -y firebase-tools@latest deploy --only firestore --project nickel-64 --non-interactive
+      - name: Enable sign-in providers
+        run: npx -y firebase-tools@latest deploy --only auth --project nickel-64 --non-interactive
+      - name: Authorize application domains
+        run: node scripts/authorize-domains.js
+      - name: Deploy Firebase website
+        run: npx -y firebase-tools@latest deploy --only hosting --project nickel-64 --non-interactive
