@@ -55,3 +55,7 @@ Recording links support YouTube Music, YouTube, Spotify, Apple Music, SoundCloud
 Event start/end selectors offer 15-minute increments, with existing off-quarter saved times preserved until changed. The calendar has an explicit open button and a readable selected-date hint.
 
 Song notes live under `setlists/{id}/songNotes/{songId}` (up to 1,000 characters). Regular owners and shared editors can update selected-song notes; verified moderators and shared viewers can only read, even when the moderator owns the plan. Notes sync independently of event details, remain specific to each setlist, appear in hover tooltips and a mobile-friendly dialog, and are included in downloads and printouts. Draft notes are saved atomically with the first cloud save. Removing a song hides its note; re-adding it restores the note.
+
+## Copyright
+
+See [COPYRIGHT.md](COPYRIGHT.md) for the notice covering original code and documentation.
