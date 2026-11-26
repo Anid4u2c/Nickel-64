@@ -7,7 +7,52 @@ Prepared: 2026-11-26.
 
 An artist or band signs in, creates a workspace, brings their repertoire, and builds a performance-ready setlist for a gig. Clients and collaborators contribute within that workspace’s permissions. Nickel 64 is the first pilot.
 
-Working assumption: build a reusable artist app from Nickel 64’s music behavior and PWA-Foundation’s infrastructure. Keep artist-specific branding and data configurable. This proposal does not select a new repository name, Firebase project or hosting address.
+Working assumption: build a reusable artist app from Nickel 64’s music behavior and PWA-Foundation’s infrastructure. Keep artist-specific branding and data configurable. This proposal does not select a new repository name, Firebase project or hosting address. The free-tier model below reflects the product clarification.
+
+## Product model: unpaid demo and free collaboration
+
+The product serves solo artists, cover bands, duos, quartets and other ensembles. Each act offers a client-facing songbook containing originals and covers. Clients can freely create playlists, share with the act, collaborate with invited people and request covers for weddings or other events.
+
+### Free artist workspace
+
+| Capability | Free allowance |
+| --- | --- |
+| Published repertoire | 3 songs, any mix of originals and existing covers |
+| Additional requested covers | 2 cover-request slots |
+| Bandmates | Up to 10 additional bandmates, plus the creating owner |
+| Client playlists | Free creation and collaboration; not counted as bandmate seats |
+| Playlist sharing | Can be shared with anyone, including a public read-only link |
+| Exceptions | Artist requests an allowance increase from the platform admin |
+
+Interpretation for the first implementation: allowances apply per artist workspace, not per playlist, client or bandmate. The 2 requested-cover slots are separate from the 3 repertoire entries. An approved requested cover can remain available in its request slot, giving a demo at most 5 selectable songs; pending or denied entries retain their explicit status and do not imply an agreement to perform. This interpretation needs product confirmation before quota implementation; do not silently choose a per-event reset or count approvals against a different limit.
+
+Also confirm whether the requested-cover allowance means 2 active requests or 2 lifetime requests. Until confirmed, describe it as 2 request slots; do not build a billing/reset policy around it. At capacity, let clients support an existing request or let the artist request an admin exception. Do not lose existing playlists when a limit is reached.
+
+The 10-bandmate interpretation excludes the creating owner. Pending invitations reserve seats; acceptance replaces that reservation rather than double-counting it. Expired/revoked invitations release a reserved seat. Clients and playlist viewers do not consume bandmate seats. Admin-approved exceptions record the scope, revised allowance, reason and approving admin; only trusted admin operations may change them. No paid prices or paid-tier entitlements are specified yet.
+
+Song entries distinguish an original from a cover, including original artist/composer where appropriate. Only metadata and legitimate recording links are needed for the demo; uploading audio is a separate future feature. Imports preview the free allowance and require the artist to choose which 3 entries to publish rather than silently truncating the import.
+
+### Sharing and collaboration
+
+Everyone can receive a playlist link. Public-link sharing is an explicit option, not automatic publication of an event. Public views expose the chosen playlist/song information, not client emails, invitation details, venue/contact information or private notes. Private invited playlists remain supported.
+
+A public read-only link does not grant editing or band membership. Playlist owners invite editors or choose a separately controlled collaboration mode; signed-in contributors can add selections, event-specific notes and cover requests within their permissions. Unauthenticated visitors can browse intentionally public songbooks/playlists; saving, collaboration and requests use sign-in. Playlist ownership and artist-workspace ownership remain separate.
+
+### Artist addresses
+
+Desired result: an artist claims a memorable songbook address during onboarding. Store a unique artist slug independently from the act's changeable display name. Validate and reserve slugs with collision handling and reserved administrative names. A slug alone never grants ownership.
+
+Firebase Hosting's default address is SITE_ID.web.app. It does not provide artist.songbook.web.app below a Hosting site. A distinct site ID such as artist-songbook can provide artist-songbook.web.app, subject to global availability and the project's Hosting-site quota. This is a distinct Hosting site and deployment target, not an automatically created wildcard subdomain.
+
+Recommended scalable initial routing: one app deployment with /artists/{slug}, illustrated as songbook.web.app/artists/nickel-64 only if that base Hosting site is available/selected. Artist onboarding reserves the route rather than provisioning a new Firebase site. For true per-artist subdomains later, use a custom domain the platform controls, for example nickel-64.EXAMPLE-OWNED-DOMAIN, with explicitly configured DNS, TLS, routing and authorized origins. The domain example is a placeholder, not an owned or available domain.
+
+If individual artist-songbook.web.app sites are selected for the demo, provision them only through trusted platform automation after name/quota checks; an artist must never receive cloud admin credentials. Reuse the shared app and tenant-aware access controls, and verify sign-in on each actual origin. Do not create a separate Firebase project per artist.
+
+### Free-tier enforcement and acceptance
+
+Enforce artist quotas and admin overrides in trusted transactional/backend authorization, not just disabled buttons or browser counters. Simultaneous additions and invitations must not exceed allowances. Public songbooks need a deliberately limited public projection instead of making private artist/event records publicly readable.
+
+Acceptance additions: 4th repertoire publication blocked; 3rd requested-cover slot blocked; approval retains the correct slot; concurrent invitations cannot create an 11th bandmate; clients/viewers never consume a seat; approved admin exception allows only its revised capacity; a copied playlist does not create new artist entitlements; public viewers cannot edit; private notes stay private; duplicate/unavailable slug handled; artist route always resolves to the correct workspace.
 
 ## Work backwards from the performance
 
@@ -24,7 +69,7 @@ The finished product is an ordered, readable running sheet: event, local date/ti
 
 ## Artist journey
 
-1. **Sign in and create your act.** Google sign-in leads to Create artist/band or accept an invitation. Enter act name, solo/duo/band, instruments and timezone; logo, bio and social links are optional. Create the workspace with the signed-in account as its initial owner. A person may belong to several acts; show the active act clearly.
+1. **Sign in and create your act.** Google sign-in leads to Create artist/band or accept an invitation. Enter act name, solo artist/cover band/duo/quartet/other ensemble, instruments and timezone; logo, bio and social links are optional. Create the workspace with the signed-in account as its initial owner. A person may belong to several acts; show the active act clearly.
 2. **Build the repertoire.** Add title and original artist/composer; optional duration, year, BPM, key, instrumentation, arrangement notes and recording links. Offer a CSV import first. Preview field mapping, invalid rows and duplicate candidates before committing. Excel/Google Sheets adapters are later increments. Distinguish the original recording artist from the performing act. Different playable arrangements of a song can have different durations and keys.
 3. **Create a gig.** Supply event name, date, timezone and quarter-hour start/end times. Venue and contact details are optional and private. Offer Blank setlist, Copy a past gig, or Use a template. Overnight schedules show the next-day ending explicitly.
 4. **Build the running order.** Search the act’s repertoire and add songs; support keyboard/touch movement as well as drag-and-drop. Group into Set 1, Set 2 and encores; insert timed breaks. Show known music duration, breaks, remaining time and songs without durations. Do not present incomplete duration totals as reliable finish-time predictions.
