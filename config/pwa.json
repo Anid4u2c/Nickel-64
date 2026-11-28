@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Anid4u2c/codex-project-oversight/main/schemas/pwa.schema.json",
+  "schemaVersion": 1,
+  "current": "0.1.0",
+  "major": 0,
+  "minor": 1,
+  "patch": 0,
+  "status": "planned",
+  "readme": {
+    "type": "custom"
+  }
+}

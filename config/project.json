@@ -1,0 +1,22 @@
+{
+  "$schema": "https://raw.githubusercontent.com/Anid4u2c/codex-project-oversight/main/schemas/project.schema.json",
+  "schemaVersion": 1,
+  "id": "nickel-64",
+  "name": "Nickel 64 Songbook",
+  "repository": {
+    "owner": "Anid4u2c",
+    "name": "Nickel-64",
+    "defaultBranch": "main"
+  },
+  "readme": {
+    "type": "custom",
+    "source": "README.md"
+  },
+  "configuration": {
+    "pwa": "config/pwa.json"
+  },
+  "firebase": {
+    "derivedFrom": ".firebaserc",
+    "projectId": "nickel-64"
+  }
+}
